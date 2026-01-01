@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -63,10 +63,10 @@ const QuizCreator = () => {
   });
 
   // Other quiz details not explicitly part of the 'Quiz' structure provided by user, but still needed
-  const [quizTimeLimit, setQuizTimeLimit] = useState<number>(30);
   const [negativeMarking, setNegativeMarking] = useState<boolean>(false);
   const [competitionMode, setCompetitionMode] = useState<boolean>(false);
   const [defaultTimePerQuestion, setDefaultTimePerQuestion] = useState<number | null>(null); // New state for optional default time
+  const [totalCalculatedQuizTime, setTotalCalculatedQuizTime] = useState<number>(0); // New state for total quiz time
 
   const [isQuizStructureInitialized, setIsQuizStructureInitialized] = useState<boolean>(false);
 
@@ -77,14 +77,20 @@ const QuizCreator = () => {
   // Calculate total marks dynamically
   const totalQuizMarks = quizData.questions.reduce((sum, q) => sum + q.marks, 0);
 
+  // Effect to calculate total quiz time whenever questions change
+  useEffect(() => {
+    const sumOfTimes = quizData.questions.reduce((sum, q) => sum + q.timeLimitMinutes, 0);
+    setTotalCalculatedQuizTime(sumOfTimes);
+  }, [quizData.questions]);
+
   // Helper validation function
   const validateQuizDraft = (): boolean => {
     if (!quizData.quizTitle.trim()) {
       toast.error("Please provide a quiz title.");
       return false;
     }
-    if (quizTimeLimit <= 0) {
-      toast.error("Please set a valid overall quiz time limit (at least 1 minute).");
+    if (totalCalculatedQuizTime <= 0) {
+      toast.error("Total quiz time must be at least 1 minute. Please ensure all questions have a valid time limit.");
       return false;
     }
     if (quizData.questions.length === 0) {
@@ -276,7 +282,7 @@ const QuizCreator = () => {
       id: quizId,
       title: quizData.quizTitle,
       questionIds: questionsForOutput.map(q => q.id),
-      timeLimitMinutes: quizTimeLimit,
+      timeLimitMinutes: totalCalculatedQuizTime, // Use the calculated total time
       negativeMarking: negativeMarking,
       competitionMode: competitionMode,
       _questionsData: questionsForOutput, // Include full question data for easy retrieval
@@ -333,10 +339,10 @@ const QuizCreator = () => {
       optionsPerQuestion: 4, // Reset to default 4 options
       questions: [],
     });
-    setQuizTimeLimit(30);
     setNegativeMarking(false);
     setCompetitionMode(false);
     setDefaultTimePerQuestion(null); // Reset default time
+    setTotalCalculatedQuizTime(0); // Reset total calculated time
     setIsQuizStructureInitialized(false);
     setAiCoursePaperName('');
     setAiDifficulty('Easy');
@@ -387,17 +393,6 @@ const QuizCreator = () => {
             </div>
             <div className="border-t pt-4 mt-4">
               <h3 className="text-lg font-semibold mb-2">Additional Quiz Settings</h3>
-              <div>
-                <Label htmlFor="quizTimeLimit">Overall Quiz Time Limit (minutes)</Label>
-                <Input
-                  id="quizTimeLimit"
-                  type="number"
-                  min="1"
-                  value={quizTimeLimit}
-                  onChange={(e) => setQuizTimeLimit(parseInt(e.target.value) || 1)}
-                  className="mt-1"
-                />
-              </div>
               <div className="mt-3">
                 <Label htmlFor="defaultTimePerQuestion">Default Time per Question (minutes, optional)</Label>
                 <Input
@@ -443,6 +438,7 @@ const QuizCreator = () => {
             <div className="flex justify-between items-center mb-4 p-3 border rounded-md bg-blue-50 text-blue-800 font-semibold">
               <span>Total Questions: {quizData.questions.length}</span>
               <span>Total Marks: {totalQuizMarks}</span>
+              <span>Total Quiz Time: {totalCalculatedQuizTime} minutes</span>
             </div>
 
             {/* AI Question Generation Section */}
