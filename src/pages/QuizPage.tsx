@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CheckCircle, XCircle, Info, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils'; // Import cn for conditional class names
 
 const QuizPage = () => {
   const { quizId } = useParams<{ quizId: string }>();
@@ -212,6 +213,10 @@ const QuizPage = () => {
     const finalScore = answers.reduce((sum, ans) => sum + ans.marksObtained, 0);
     const totalPossibleMarks = questions.reduce((sum, q) => sum + q.marks, 0);
     const timeTaken = initialTime - timeLeft;
+    const totalCorrectAnswers = answers.filter(ans => ans.isCorrect).length;
+    const totalWrongAnswers = answers.filter(ans => !ans.isCorrect && ans.selectedAnswer !== null).length;
+    const totalUnanswered = questions.length - answers.length;
+
 
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-green-50 to-blue-100 p-8">
@@ -222,27 +227,66 @@ const QuizPage = () => {
           <CardContent className="text-center space-y-4">
             <p className="text-2xl text-gray-800">Congratulations, <span className="font-semibold">{quizStudentName}</span>!</p>
             <p className="text-5xl font-extrabold text-blue-600">Your Score: {finalScore.toFixed(2)} / {totalPossibleMarks}</p>
+            <div className="grid grid-cols-2 gap-4 text-lg">
+              <div className="flex flex-col items-center">
+                <CheckCircle className="h-8 w-8 text-green-500 mb-1" />
+                <span className="font-semibold">Correct Answers:</span> {totalCorrectAnswers}
+              </div>
+              <div className="flex flex-col items-center">
+                <XCircle className="h-8 w-8 text-red-500 mb-1" />
+                <span className="font-semibold">Wrong Answers:</span> {totalWrongAnswers}
+              </div>
+            </div>
             {quiz.competitionMode && (
               <p className="text-xl text-gray-700">Time Taken: <span className="font-semibold">{formatTime(timeTaken)}</span></p>
             )}
             <div className="mt-6">
               <h3 className="text-xl font-semibold mb-3">Review Your Answers:</h3>
-              <div className="space-y-3 max-h-80 overflow-y-auto p-4 border rounded-md bg-gray-50">
+              <div className="space-y-6 max-h-80 overflow-y-auto p-4 border rounded-md bg-gray-50">
                 {questions.map((q, index) => {
                   const studentAnswer = answers.find(ans => ans.questionId === q.id);
                   const isCorrect = studentAnswer?.isCorrect;
                   const marksObtained = studentAnswer?.marksObtained || 0;
 
                   return (
-                    <div key={q.id} className={`p-3 rounded-md ${isCorrect ? 'bg-green-100' : 'bg-red-100'} flex items-start space-x-3`}>
-                      {isCorrect ? <CheckCircle className="text-green-600 mt-1" /> : <XCircle className="text-red-600 mt-1" />}
-                      <div className="text-left flex-grow">
-                        <p className="font-medium text-gray-800">{index + 1}. {q.questionText} ({q.marks} marks)</p>
-                        <p className="text-sm text-gray-700">Your Answer: <span className="font-semibold">{studentAnswer?.selectedAnswer || 'Not Answered'}</span></p>
-                        {!isCorrect && (
-                          <p className="text-sm text-gray-700">Correct Answer: <span className="font-semibold">{q.correctAnswer}</span></p>
-                        )}
-                        <p className="text-sm text-gray-700">Marks: <span className="font-semibold">{marksObtained.toFixed(2)}</span></p>
+                    <div key={q.id} className="p-4 rounded-md bg-white shadow-sm">
+                      <div className="flex items-start space-x-3 mb-3">
+                        {isCorrect ? <CheckCircle className="text-green-600 mt-1" /> : <XCircle className="text-red-600 mt-1" />}
+                        <div className="text-left flex-grow">
+                          <p className="font-medium text-gray-800 text-lg">{index + 1}. {q.questionText} ({q.marks} marks)</p>
+                          <p className="text-sm text-gray-700">Marks: <span className="font-semibold">{marksObtained.toFixed(2)}</span></p>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {q.options.map((option, optIndex) => {
+                          const isSelected = studentAnswer?.selectedAnswer === option;
+                          const isCorrectOption = q.correctAnswer === option;
+
+                          return (
+                            <div
+                              key={optIndex}
+                              className={cn(
+                                "p-2 border rounded-md text-left",
+                                isCorrectOption && "bg-green-100 border-green-400", // Correct answer
+                                isSelected && !isCorrectOption && "bg-red-100 border-red-400", // Wrong selected answer
+                                isSelected && isCorrectOption && "bg-green-100 border-green-400", // Correct selected answer
+                                !isSelected && !isCorrectOption && "bg-gray-50 border-gray-200" // Unselected, incorrect option
+                              )}
+                            >
+                              <span className="font-medium">{option}</span>
+                              {isSelected && (
+                                isCorrectOption ? (
+                                  <span className="ml-2 text-green-700">(Your Answer - Correct)</span>
+                                ) : (
+                                  <span className="ml-2 text-red-700">(Your Answer - Incorrect)</span>
+                                )
+                              )}
+                              {!isSelected && isCorrectOption && (
+                                <span className="ml-2 text-green-700">(Correct Answer)</span>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
