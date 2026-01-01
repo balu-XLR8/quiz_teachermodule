@@ -11,76 +11,24 @@ import AvailableQuizzesList from '@/components/teacher/AvailableQuizzesList';
 import { useIsMobile } from '@/hooks/use-mobile'; // Import the hook
 
 const TeacherDashboard = () => {
-  const { questions, quizzes, addQuestion } = useQuiz();
+  const { quizzes } = useQuiz(); // Removed 'questions' and 'addQuestion' as QuestionCreator manages its own state now
   const isMobile = useIsMobile();
 
   // State for active view in sidebar
   const [activeView, setActiveView] = useState<string>('create-question');
 
-  // Question Creation State
-  const [questionText, setQuestionText] = useState('');
-  const [options, setOptions] = useState<string[]>(['', '', '', '']);
-  const [correctAnswer, setCorrectAnswer] = useState('');
-  const [questionMarks, setQuestionMarks] = useState<number>(1);
-
-  // AI Question Generation State (removed from here, now handled in QuizCreator)
-
-  const handleAddQuestion = () => {
-    if (!questionText || options.some(opt => !opt) || !correctAnswer || questionMarks <= 0) {
-      toast.error("Please fill all question fields, select a correct answer, and set valid marks.");
-      return;
-    }
-    if (!options.includes(correctAnswer)) {
-      toast.error("Correct answer must be one of the provided options.");
-      return;
-    }
-
-    addQuestion({
-      quizId: 'unassigned',
-      questionText,
-      options,
-      correctAnswer,
-      marks: questionMarks,
-    });
-
-    setQuestionText('');
-    setOptions(['', '', '', '']);
-    setCorrectAnswer('');
-    setQuestionMarks(1);
-  };
+  // Removed Question Creation State as it's now managed internally by QuestionCreator
 
   const renderContent = () => {
     switch (activeView) {
       case 'create-question':
-        return (
-          <QuestionCreator
-            questionText={questionText}
-            setQuestionText={setQuestionText}
-            options={options}
-            setOptions={setOptions}
-            correctAnswer={correctAnswer}
-            setCorrectAnswer={setCorrectAnswer}
-            questionMarks={questionMarks}
-            setQuestionMarks={setQuestionMarks}
-            handleAddQuestion={handleAddQuestion}
-          />
-        );
+        return <QuestionCreator />; // Render QuestionCreator without props
       case 'create-quiz':
-        return <QuizCreator />; // QuizCreator now handles its own state and AI generation
+        return <QuizCreator />;
       case 'available-quizzes':
         return <AvailableQuizzesList quizzes={quizzes} />;
       default:
-        return <QuestionCreator
-          questionText={questionText}
-          setQuestionText={setQuestionText}
-          options={options}
-          setOptions={setOptions}
-          correctAnswer={correctAnswer}
-          setCorrectAnswer={setCorrectAnswer}
-          questionMarks={questionMarks}
-          setQuestionMarks={setQuestionMarks}
-          handleAddQuestion={handleAddQuestion}
-        />;
+        return <QuestionCreator />;
     }
   };
 

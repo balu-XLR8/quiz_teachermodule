@@ -1,99 +1,196 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQuiz } from '@/context/QuizContext';
 
-interface QuestionCreatorProps {
+// Define a type for questions in local draft state
+interface DraftQuestion {
   questionText: string;
-  setQuestionText: (text: string) => void;
   options: string[];
-  setOptions: (options: string[]) => void;
   correctAnswer: string;
-  setCorrectAnswer: (answer: string) => void;
-  questionMarks: number;
-  setQuestionMarks: (marks: number) => void;
-  handleAddQuestion: () => void;
+  marks: number;
 }
 
-const QuestionCreator = ({
-  questionText,
-  setQuestionText,
-  options,
-  setOptions,
-  correctAnswer,
-  setCorrectAnswer,
-  questionMarks,
-  setQuestionMarks,
-  handleAddQuestion,
-}: QuestionCreatorProps) => {
-  const handleOptionChange = (index: number, value: string) => {
-    const newOptions = [...options];
-    newOptions[index] = value;
-    setOptions(newOptions);
+const QuestionCreator = () => {
+  const { addQuestion } = useQuiz();
+
+  const [numQuestionsToCreate, setNumQuestionsToCreate] = useState<number>(1);
+  const [draftQuestions, setDraftQuestions] = useState<DraftQuestion[]>(() => [
+    { questionText: '', options: ['', '', '', ''], correctAnswer: '', marks: 1 },
+  ]);
+
+  // Adjust draftQuestions array length when numQuestionsToCreate changes
+  useEffect(() => {
+    setDraftQuestions((prevQuestions) => {
+      const newQuestions = [...prevQuestions];
+      while (newQuestions.length < numQuestionsToCreate) {
+        newQuestions.push({ questionText: '', options: ['', '', '', ''], correctAnswer: '', marks: 1 });
+      }
+      return newQuestions.slice(0, numQuestionsToCreate);
+    });
+  }, [numQuestionsToCreate]);
+
+  const handleUpdateQuestion = (index: number, field: keyof DraftQuestion, value: any) => {
+    setDraftQuestions((prevQuestions) => {
+      const newQuestions = [...prevQuestions];
+      newQuestions[index] = { ...newQuestions[index], [field]: value };
+      return newQuestions;
+    });
+  };
+
+  const handleOptionChange = (questionIndex: number, optionIndex: number, value: string) => {
+    setDraftQuestions((prevQuestions) => {
+      const newQuestions = [...prevQuestions];
+      const newOptions = [...newQuestions[questionIndex].options];
+      newOptions[optionIndex] = value;
+      newQuestions[questionIndex] = { ...newQuestions[questionIndex], options: newOptions };
+      return newQuestions;
+    });
+  };
+
+  const handleAddAllQuestions = () => {
+    let hasError = false;
+    draftQuestions.forEach((q, index) => {
+      if (!q.questionText.trim() || q.options.some(opt => !opt.trim()) || !q.correctAnswer.trim() || q.marks <= 0) {
+        toast.error(`Question ${index + 1}: Please fill all fields, select a correct answer, and set valid marks.`);
+        hasError = true;
+      } else if (!q.options.includes(q.correctAnswer)) {
+        toast.error(`Question ${index + 1}: Correct answer must be one of the provided options.`);
+        hasError = true;
+      }
+    });
+
+    if (hasError) {
+      return;
+    }
+
+    draftQuestions.forEach((q) => {
+      addQuestion({
+        quizId: 'unassigned', // These questions are added to a general pool
+        questionText: q.questionText,
+        options: q.options,
+        correctAnswer: q.correctAnswer,
+        marks: q.marks,
+      });
+    });
+
+    toast.success(`${draftQuestions.length} question(s) added to the pool!`);
+    // Reset form
+    setNumQuestionsToCreate(1);
+    setDraftQuestions([
+      { questionText: '', options: ['', '', '', ''], correctAnswer: '', marks: 1 },
+    ]);
+  };
+
+  const handleDeleteQuestionBlock = (indexToDelete: number) => {
+    setDraftQuestions((prevQuestions) => {
+      const newQuestions = prevQuestions.filter((_, index) => index !== indexToDelete);
+      setNumQuestionsToCreate(newQuestions.length); // Update the count input
+      return newQuestions;
+    });
+    toast.info("Question block removed.");
   };
 
   return (
     <Card className="shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-2xl">
-          <PlusCircle className="h-6 w-6" /> Create New Question
+          <PlusCircle className="h-6 w-6" /> Create New Questions
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         <div>
-          <Label htmlFor="questionText">Question Text</Label>
-          <Textarea
-            id="questionText"
-            placeholder="Enter your question here..."
-            value={questionText}
-            onChange={(e) => setQuestionText(e.target.value)}
-            className="mt-1"
-          />
-        </div>
-        {options.map((option, index) => (
-          <div key={index}>
-            <Label htmlFor={`option-${index}`}>Option {index + 1}</Label>
-            <Input
-              id={`option-${index}`}
-              placeholder={`Option ${index + 1}`}
-              value={option}
-              onChange={(e) => handleOptionChange(index, e.target.value)}
-              className="mt-1"
-            />
-          </div>
-        ))}
-        <div>
-          <Label>Correct Answer</Label>
-          <RadioGroup onValueChange={setCorrectAnswer} value={correctAnswer} className="flex flex-col space-y-1 mt-2">
-            {options.filter(opt => opt).map((option, index) => (
-              <div key={index} className="flex items-center space-x-2">
-                <RadioGroupItem value={option} id={`correct-option-${index}`} />
-                <Label htmlFor={`correct-option-${index}`}>{option}</Label>
-              </div>
-            ))}
-          </RadioGroup>
-        </div>
-        <div>
-          <Label htmlFor="questionMarks">Marks for this Question</Label>
+          <Label htmlFor="numQuestionsToCreate">Number of Questions to Create</Label>
           <Input
-            id="questionMarks"
+            id="numQuestionsToCreate"
             type="number"
             min="1"
-            value={questionMarks}
-            onChange={(e) => setQuestionMarks(parseInt(e.target.value) || 1)}
+            value={numQuestionsToCreate}
+            onChange={(e) => setNumQuestionsToCreate(parseInt(e.target.value) || 1)}
             className="mt-1"
           />
+        </div>
+
+        <div className="space-y-8 max-h-[60vh] overflow-y-auto p-3 border rounded-md bg-gray-50">
+          {draftQuestions.map((q, index) => (
+            <Card key={index} className="p-4 border rounded-md bg-white shadow-sm relative">
+              {numQuestionsToCreate > 1 && (
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-2 right-2 h-7 w-7"
+                  onClick={() => handleDeleteQuestionBlock(index)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+              <h3 className="text-lg font-semibold mb-3">Question {index + 1}</h3>
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor={`questionText-${index}`}>Question Text</Label>
+                  <Textarea
+                    id={`questionText-${index}`}
+                    placeholder="Enter your question here..."
+                    value={q.questionText}
+                    onChange={(e) => handleUpdateQuestion(index, 'questionText', e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                {q.options.map((option, optIndex) => (
+                  <div key={optIndex}>
+                    <Label htmlFor={`option-${index}-${optIndex}`}>Option {optIndex + 1}</Label>
+                    <Input
+                      id={`option-${index}-${optIndex}`}
+                      placeholder={`Option ${optIndex + 1}`}
+                      value={option}
+                      onChange={(e) => handleOptionChange(index, optIndex, e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                ))}
+                <div>
+                  <Label>Correct Answer</Label>
+                  <RadioGroup
+                    onValueChange={(value) => handleUpdateQuestion(index, 'correctAnswer', value)}
+                    value={q.correctAnswer}
+                    className="flex flex-col space-y-1 mt-2"
+                  >
+                    {q.options.filter(opt => opt.trim()).map((option, optIndex) => (
+                      <div key={optIndex} className="flex items-center space-x-2">
+                        <RadioGroupItem value={option} id={`correct-option-${index}-${optIndex}`} />
+                        <Label htmlFor={`correct-option-${index}-${optIndex}`}>{option}</Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </div>
+                <div>
+                  <Label htmlFor={`questionMarks-${index}`}>Marks for this Question</Label>
+                  <Input
+                    id={`questionMarks-${index}`}
+                    type="number"
+                    min="1"
+                    value={q.marks}
+                    onChange={(e) => handleUpdateQuestion(index, 'marks', parseInt(e.target.value) || 1)}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+            </Card>
+          ))}
         </div>
       </CardContent>
       <CardFooter>
-        <Button onClick={handleAddQuestion} className="w-full bg-green-600 hover:bg-green-700">Add Question to Pool</Button>
+        <Button onClick={handleAddAllQuestions} className="w-full bg-green-600 hover:bg-green-700">
+          Add All Questions to Pool
+        </Button>
       </CardFooter>
     </Card>
   );
