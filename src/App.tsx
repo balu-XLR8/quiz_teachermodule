@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import { QuizProvider } from "./context/QuizContext"; // Import QuizProvider
+import { QuizProvider } from "@/context/QuizContext"; // Updated import path
 import TeacherDashboard from "./pages/TeacherDashboard"; // New page
 import StudentDashboard from "./pages/StudentDashboard"; // New page
 import QuizPage from "./pages/QuizPage"; // New page
