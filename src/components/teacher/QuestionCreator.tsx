@@ -16,7 +16,7 @@ interface DraftQuestion {
   questionText: string;
   options: string[];
   correctAnswer: string;
-  marks: number;
+  marks: number | ''; // Allow marks to be an empty string
 }
 
 const QuestionCreator = () => {
@@ -70,7 +70,13 @@ const QuestionCreator = () => {
   const handleUpdateQuestion = (index: number, field: keyof DraftQuestion, value: any) => {
     setDraftQuestions((prevQuestions) => {
       const newQuestions = [...prevQuestions];
-      newQuestions[index] = { ...newQuestions[index], [field]: value };
+      if (field === 'marks') {
+        // If value is empty string, store as empty string. Otherwise, parse to int.
+        const parsedValue = value === '' ? '' : parseInt(value);
+        newQuestions[index] = { ...newQuestions[index], [field]: parsedValue };
+      } else {
+        newQuestions[index] = { ...newQuestions[index], [field]: value };
+      }
       return newQuestions;
     });
   };
@@ -88,8 +94,15 @@ const QuestionCreator = () => {
   const handleAddAllQuestions = () => {
     let hasError = false;
     draftQuestions.forEach((q, index) => {
-      if (!q.questionText.trim() || q.options.some(opt => !opt.trim()) || !q.correctAnswer.trim() || q.marks <= 0) {
-        toast.error(`Question ${index + 1}: Please fill all fields, select a correct answer, and set valid marks.`);
+      // Check for empty question text, empty options, no correct answer, or invalid marks
+      if (
+        !q.questionText.trim() ||
+        q.options.some(opt => !opt.trim()) ||
+        !q.correctAnswer.trim() ||
+        q.marks === '' || // Check if marks input is empty
+        (typeof q.marks === 'number' && q.marks <= 0) // Check if marks are 0 or negative
+      ) {
+        toast.error(`Question ${index + 1}: Please fill all fields, select a correct answer, and set valid marks (must be at least 1).`);
         hasError = true;
       } else if (!q.options.includes(q.correctAnswer)) {
         toast.error(`Question ${index + 1}: Correct answer must be one of the provided options.`);
@@ -102,12 +115,15 @@ const QuestionCreator = () => {
     }
 
     draftQuestions.forEach((q) => {
+      // Ensure marks is a number before adding
+      const marksToAdd = typeof q.marks === 'number' ? q.marks : 1; // Fallback to 1 if somehow not a number
+
       addQuestion({
         quizId: 'unassigned', // These questions are added to a general pool
         questionText: q.questionText,
         options: q.options,
         correctAnswer: q.correctAnswer,
-        marks: q.marks,
+        marks: marksToAdd,
       });
     });
 
@@ -186,15 +202,14 @@ const QuestionCreator = () => {
                     className="mt-1"
                   />
                 </div>
-                {/* Moved Marks input here */}
                 <div>
                   <Label htmlFor={`questionMarks-${index}`}>Marks for this Question</Label>
                   <Input
                     id={`questionMarks-${index}`}
                     type="number"
                     min="1"
-                    value={q.marks}
-                    onChange={(e) => handleUpdateQuestion(index, 'marks', parseInt(e.target.value) || 1)}
+                    value={q.marks} // Display empty string if marks is empty
+                    onChange={(e) => handleUpdateQuestion(index, 'marks', e.target.value)}
                     className="mt-1"
                   />
                 </div>
