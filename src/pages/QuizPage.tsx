@@ -7,11 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CheckCircle, XCircle, Info, Clock } from 'lucide-react';
+import { CheckCircle, XCircle, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils'; // Import cn for conditional class names
+import QuizHeader from '@/components/quiz/QuizHeader'; // Import QuizHeader
+import { useIsMobile } from '@/hooks/use-mobile'; // Import useIsMobile
 
 const QuizPage = () => {
   const { quizId } = useParams<{ quizId: string }>();
@@ -22,6 +23,7 @@ const QuizPage = () => {
   const { getQuizById, getQuestionsForQuiz, submitQuizAttempt } = useQuiz();
   const quiz = quizId ? getQuizById(quizId) : undefined;
   const questions = quizId ? getQuestionsForQuiz(quizId) : [];
+  const isMobile = useIsMobile();
 
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -92,7 +94,7 @@ const QuizPage = () => {
   }
 
   const currentQuestion = questions[currentQuestionIndex];
-  const progress = (currentQuestionIndex / questions.length) * 100;
+  // const progress = (currentQuestionIndex / questions.length) * 100; // Moved to QuizHeader
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -215,7 +217,7 @@ const QuizPage = () => {
     const timeTaken = initialTime - timeLeft;
     const totalCorrectAnswers = answers.filter(ans => ans.isCorrect).length;
     const totalWrongAnswers = answers.filter(ans => !ans.isCorrect && ans.selectedAnswer !== null).length;
-    const totalUnanswered = questions.length - answers.length;
+    // const totalUnanswered = questions.length - answers.length; // Not explicitly requested, but good for debugging
 
 
     return (
@@ -308,63 +310,63 @@ const QuizPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-8">
-      <Card className="w-full max-w-2xl shadow-xl">
-        <CardHeader>
-          <CardTitle className="text-3xl font-bold text-gray-800 text-center">{quiz.title}</CardTitle>
-          <div className="flex justify-between items-center mt-2">
-            <div className="text-center text-gray-600">
-              Question {currentQuestionIndex + 1} of {questions.length}
-            </div>
-            <div className={`flex items-center gap-1 font-semibold ${timeLeft <= 60 ? 'text-red-500' : 'text-gray-700'}`}>
-              <Clock className="h-5 w-5" /> {formatTime(timeLeft)}
-            </div>
-          </div>
-          <Progress value={progress} className="w-full mt-4" />
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {!studentName && (
-            <div className="mb-4">
-              <Label htmlFor="quizStudentName" className="text-lg font-semibold">Your Name</Label>
-              <Input
-                id="quizStudentName"
-                placeholder="Enter your name"
-                value={quizStudentName}
-                onChange={(e) => setQuizStudentName(e.target.value)}
-                className="mt-2 p-3 text-lg"
-              />
-              <p className="text-sm text-gray-500 mt-1">This name will be used for the leaderboard.</p>
-            </div>
-          )}
-          <h2 className="text-2xl font-semibold text-gray-900">{currentQuestion.questionText} ({currentQuestion.marks} marks)</h2>
-          <RadioGroup onValueChange={setSelectedAnswer} value={selectedAnswer || ''} className="space-y-3">
-            {currentQuestion.options.map((option, index) => (
-              <div key={index} className="flex items-center space-x-3 p-3 border rounded-md hover:bg-gray-100 cursor-pointer">
-                <RadioGroupItem value={option} id={`option-${index}`} />
-                <Label htmlFor={`option-${index}`} className="text-lg font-normal flex-grow cursor-pointer">
-                  {option}
-                </Label>
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      <QuizHeader
+        quizTitle={quiz.title}
+        currentQuestionIndex={currentQuestionIndex}
+        totalQuestions={questions.length}
+        timeLeft={timeLeft}
+        isMobile={isMobile}
+      />
+      <main className="flex-1 flex items-center justify-center p-4">
+        <Card className="w-full max-w-2xl shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-3xl font-bold text-gray-800 text-center">{quiz.title}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {!studentName && (
+              <div className="mb-4">
+                <Label htmlFor="quizStudentName" className="text-lg font-semibold">Your Name</Label>
+                <Input
+                  id="quizStudentName"
+                  placeholder="Enter your name"
+                  value={quizStudentName}
+                  onChange={(e) => setQuizStudentName(e.target.value)}
+                  className="mt-2 p-3 text-lg"
+                />
+                <p className="text-sm text-gray-500 mt-1">This name will be used for the leaderboard.</p>
               </div>
-            ))}
-          </RadioGroup>
-        </CardContent>
-        <CardFooter className="flex justify-between mt-6">
-          <Button
-            onClick={handlePreviousQuestion}
-            disabled={currentQuestionIndex === 0}
-            variant="outline"
-            className="text-lg px-6 py-3"
-          >
-            Previous
-          </Button>
-          <Button
-            onClick={handleNextQuestion}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-lg px-6 py-3"
-          >
-            {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'Submit Quiz'}
-          </Button>
-        </CardFooter>
-      </Card>
+            )}
+            <h2 className="text-2xl font-semibold text-gray-900">{currentQuestion.questionText} ({currentQuestion.marks} marks)</h2>
+            <RadioGroup onValueChange={setSelectedAnswer} value={selectedAnswer || ''} className="space-y-3">
+              {currentQuestion.options.map((option, index) => (
+                <div key={index} className="flex items-center space-x-3 p-3 border rounded-md hover:bg-gray-100 cursor-pointer">
+                  <RadioGroupItem value={option} id={`option-${index}`} />
+                  <Label htmlFor={`option-${index}`} className="text-lg font-normal flex-grow cursor-pointer">
+                    {option}
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </CardContent>
+          <CardFooter className="flex justify-between mt-6">
+            <Button
+              onClick={handlePreviousQuestion}
+              disabled={currentQuestionIndex === 0}
+              variant="outline"
+              className="text-lg px-6 py-3"
+            >
+              Previous
+            </Button>
+            <Button
+              onClick={handleNextQuestion}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-lg px-6 py-3"
+            >
+              {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'Submit Quiz'}
+            </Button>
+          </CardFooter>
+        </Card>
+      </main>
     </div>
   );
 };

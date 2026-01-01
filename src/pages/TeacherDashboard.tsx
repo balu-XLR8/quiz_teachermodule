@@ -1,22 +1,22 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useQuiz, Question, Quiz } from '@/context/QuizContext';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
+import { useQuiz, Question } from '@/context/QuizContext';
 import { toast } from 'sonner';
-import { PlusCircle, Brain, ListChecks, Trophy, Clock, MinusCircle, Users, Trash2 } from 'lucide-react'; // Added Trash2 icon
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
+import TeacherSidebar from '@/components/layout/TeacherSidebar';
+import QuestionCreator from '@/components/teacher/QuestionCreator';
+import AIQuestionGenerator from '@/components/teacher/AIQuestionGenerator';
+import QuizCreator from '@/components/teacher/QuizCreator';
+import AvailableQuizzesList from '@/components/teacher/AvailableQuizzesList';
+import { useIsMobile } from '@/hooks/use-mobile'; // Import the hook
 
 const TeacherDashboard = () => {
   const { questions, quizzes, addQuestion, addQuiz, generateAIQuestions } = useQuiz();
+  const isMobile = useIsMobile();
+
+  // State for active view in sidebar
+  const [activeView, setActiveView] = useState<string>('create-question');
 
   // Question Creation State
   const [questionText, setQuestionText] = useState('');
@@ -35,13 +35,7 @@ const TeacherDashboard = () => {
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
   const [quizTimeLimit, setQuizTimeLimit] = useState<number>(30);
   const [negativeMarking, setNegativeMarking] = useState<boolean>(false);
-  const [competitionMode, setCompetitionMode] = useState<boolean>(false); // New state for competition mode
-
-  const handleOptionChange = (index: number, value: string) => {
-    const newOptions = [...options];
-    newOptions[index] = value;
-    setOptions(newOptions);
-  };
+  const [competitionMode, setCompetitionMode] = useState<boolean>(false);
 
   const handleAddQuestion = () => {
     if (!questionText || options.some(opt => !opt) || !correctAnswer || questionMarks <= 0) {
@@ -77,13 +71,13 @@ const TeacherDashboard = () => {
       title: quizTitle,
       timeLimitMinutes: quizTimeLimit,
       negativeMarking: negativeMarking,
-      competitionMode: competitionMode, // Include competition mode
+      competitionMode: competitionMode,
     }, selectedQuestionIds);
     setQuizTitle('');
     setSelectedQuestionIds([]);
     setQuizTimeLimit(30);
     setNegativeMarking(false);
-    setCompetitionMode(false); // Reset competition mode
+    setCompetitionMode(false);
   };
 
   const handleToggleQuestionSelection = (questionId: string) => {
@@ -105,44 +99,6 @@ const TeacherDashboard = () => {
     }
     const generated = generateAIQuestions(aiCoursePaperName, aiDifficulty, aiNumQuestions);
     setAiGeneratedQuestions(generated);
-    // setAiCoursePaperName(''); // Keep for potential regeneration
-    // setAiNumQuestions(3); // Keep for potential regeneration
-  };
-
-  const handleEditAIGeneratedQuestion = (
-    questionId: string,
-    field: 'questionText' | 'correctAnswer' | 'marks',
-    value: string | number
-  ) => {
-    setAiGeneratedQuestions((prev) =>
-      prev.map((q) =>
-        q.id === questionId
-          ? { ...q, [field]: value }
-          : q
-      )
-    );
-  };
-
-  const handleEditAIGeneratedOption = (
-    questionId: string,
-    optionIndex: number,
-    value: string
-  ) => {
-    setAiGeneratedQuestions((prev) =>
-      prev.map((q) =>
-        q.id === questionId
-          ? {
-              ...q,
-              options: q.options.map((opt, idx) => (idx === optionIndex ? value : opt)),
-            }
-          : q
-      )
-    );
-  };
-
-  const handleDeleteAIGeneratedQuestion = (questionId: string) => {
-    setAiGeneratedQuestions((prev) => prev.filter((q) => q.id !== questionId));
-    toast.info("AI generated question deleted.");
   };
 
   const handleAddAIGeneratedQuestionsToPool = () => {
@@ -151,7 +107,6 @@ const TeacherDashboard = () => {
       return;
     }
     aiGeneratedQuestions.forEach(q => {
-      // Basic validation for generated questions before adding to pool
       if (!q.questionText || q.options.some(opt => !opt) || !q.correctAnswer || q.marks <= 0 || !q.options.includes(q.correctAnswer)) {
         toast.error(`Question "${q.questionText.substring(0, 30)}..." is incomplete or invalid and was not added.`);
         return;
@@ -164,298 +119,102 @@ const TeacherDashboard = () => {
         marks: q.marks,
       });
     });
-    setAiGeneratedQuestions([]); // Clear generated questions after adding
+    setAiGeneratedQuestions([]);
     toast.success("Selected AI generated questions added to the question pool!");
   };
 
+  const renderContent = () => {
+    switch (activeView) {
+      case 'create-question':
+        return (
+          <QuestionCreator
+            questionText={questionText}
+            setQuestionText={setQuestionText}
+            options={options}
+            setOptions={setOptions}
+            correctAnswer={correctAnswer}
+            setCorrectAnswer={setCorrectAnswer}
+            questionMarks={questionMarks}
+            setQuestionMarks={setQuestionMarks}
+            handleAddQuestion={handleAddQuestion}
+          />
+        );
+      case 'ai-generator':
+        return (
+          <AIQuestionGenerator
+            aiCoursePaperName={aiCoursePaperName}
+            setAiCoursePaperName={setAiCoursePaperName}
+            aiDifficulty={aiDifficulty}
+            setAiDifficulty={setAiDifficulty}
+            aiNumQuestions={aiNumQuestions}
+            setAiNumQuestions={setAiNumQuestions}
+            aiGeneratedQuestions={aiGeneratedQuestions}
+            setAiGeneratedQuestions={setAiGeneratedQuestions}
+            handleGenerateAIQuestions={handleGenerateAIQuestions}
+            handleAddAIGeneratedQuestionsToPool={handleAddAIGeneratedQuestionsToPool}
+          />
+        );
+      case 'create-quiz':
+        return (
+          <QuizCreator
+            quizTitle={quizTitle}
+            setQuizTitle={setQuizTitle}
+            quizTimeLimit={quizTimeLimit}
+            setQuizTimeLimit={setQuizTimeLimit}
+            negativeMarking={negativeMarking}
+            setNegativeMarking={setNegativeMarking}
+            competitionMode={competitionMode}
+            setCompetitionMode={setCompetitionMode}
+            questions={questions}
+            selectedQuestionIds={selectedQuestionIds}
+            handleToggleQuestionSelection={handleToggleQuestionSelection}
+            handleAddQuiz={handleAddQuiz}
+          />
+        );
+      case 'available-quizzes':
+        return <AvailableQuizzesList quizzes={quizzes} />;
+      default:
+        return <QuestionCreator
+          questionText={questionText}
+          setQuestionText={setQuestionText}
+          options={options}
+          setOptions={setOptions}
+          correctAnswer={correctAnswer}
+          setCorrectAnswer={setCorrectAnswer}
+          questionMarks={questionMarks}
+          setQuestionMarks={setQuestionMarks}
+          handleAddQuestion={handleAddQuestion}
+        />;
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <header className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-800">Teacher Dashboard</h1>
-        <nav className="space-x-4">
-          <Link to="/" className="text-blue-600 hover:underline">Home</Link>
-          <Link to="/leaderboard" className="text-blue-600 hover:underline">Leaderboard</Link>
-        </nav>
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      <header className="flex items-center justify-between p-4 border-b bg-white shadow-sm lg:hidden">
+        <TeacherSidebar activeView={activeView} setActiveView={setActiveView} isMobile={isMobile} />
+        <h1 className="text-2xl font-bold text-gray-800">Teacher Dashboard</h1>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Question Creation */}
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <PlusCircle className="h-6 w-6" /> Create New Question
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="questionText">Question Text</Label>
-              <Textarea
-                id="questionText"
-                placeholder="Enter your question here..."
-                value={questionText}
-                onChange={(e) => setQuestionText(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            {options.map((option, index) => (
-              <div key={index}>
-                <Label htmlFor={`option-${index}`}>Option {index + 1}</Label>
-                <Input
-                  id={`option-${index}`}
-                  placeholder={`Option ${index + 1}`}
-                  value={option}
-                  onChange={(e) => handleOptionChange(index, e.target.value)}
-                  className="mt-1"
-                />
-              </div>
-            ))}
-            <div>
-              <Label>Correct Answer</Label>
-              <RadioGroup onValueChange={setCorrectAnswer} value={correctAnswer} className="flex flex-col space-y-1 mt-2">
-                {options.filter(opt => opt).map((option, index) => (
-                  <div key={index} className="flex items-center space-x-2">
-                    <RadioGroupItem value={option} id={`correct-option-${index}`} />
-                    <Label htmlFor={`correct-option-${index}`}>{option}</Label>
-                  </div>
-                ))}
-              </RadioGroup>
-            </div>
-            <div>
-              <Label htmlFor="questionMarks">Marks for this Question</Label>
-              <Input
-                id="questionMarks"
-                type="number"
-                min="1"
-                value={questionMarks}
-                onChange={(e) => setQuestionMarks(parseInt(e.target.value) || 1)}
-                className="mt-1"
-              />
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button onClick={handleAddQuestion} className="w-full bg-green-600 hover:bg-green-700">Add Question to Pool</Button>
-          </CardFooter>
-        </Card>
-
-        {/* AI Question Generation */}
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <Brain className="h-6 w-6" /> AI Question Generation (Mock)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="aiCoursePaperName">Course / Paper Name</Label>
-              <Input
-                id="aiCoursePaperName"
-                placeholder="e.g., 'Introduction to Quantum Physics'"
-                value={aiCoursePaperName}
-                onChange={(e) => setAiCoursePaperName(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="aiNumQuestions">Number of Questions</Label>
-              <Input
-                id="aiNumQuestions"
-                type="number"
-                min="1"
-                value={aiNumQuestions}
-                onChange={(e) => setAiNumQuestions(parseInt(e.target.value) || 1)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="aiDifficulty">Difficulty</Label>
-              <Select onValueChange={(value: 'Easy' | 'Medium' | 'Hard') => setAiDifficulty(value)} value={aiDifficulty}>
-                <SelectTrigger className="w-full mt-1">
-                  <SelectValue placeholder="Select difficulty" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Easy">Easy</SelectItem>
-                  <SelectItem value="Medium">Medium</SelectItem>
-                  <SelectItem value="Hard">Hard</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={handleGenerateAIQuestions} className="w-full bg-purple-600 hover:bg-purple-700">Generate Questions</Button>
-            {aiGeneratedQuestions.length > 0 && (
-              <div className="mt-4 p-4 border rounded-md bg-gray-50">
-                <h3 className="font-semibold mb-4">Generated Questions:</h3>
-                <div className="space-y-6 max-h-96 overflow-y-auto">
-                  {aiGeneratedQuestions.map((q, index) => (
-                    <Card key={q.id} className="p-4 border rounded-md bg-white shadow-sm relative">
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-2 right-2 h-7 w-7"
-                        onClick={() => handleDeleteAIGeneratedQuestion(q.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                      <div className="space-y-3">
-                        <div>
-                          <Label htmlFor={`ai-q-text-${q.id}`}>Question Text</Label>
-                          <Textarea
-                            id={`ai-q-text-${q.id}`}
-                            value={q.questionText}
-                            onChange={(e) => handleEditAIGeneratedQuestion(q.id, 'questionText', e.target.value)}
-                            className="mt-1"
-                          />
-                        </div>
-                        {q.options.map((option, optIndex) => (
-                          <div key={optIndex}>
-                            <Label htmlFor={`ai-q-option-${q.id}-${optIndex}`}>Option {optIndex + 1}</Label>
-                            <Input
-                              id={`ai-q-option-${q.id}-${optIndex}`}
-                              value={option}
-                              onChange={(e) => handleEditAIGeneratedOption(q.id, optIndex, e.target.value)}
-                              className="mt-1"
-                            />
-                          </div>
-                        ))}
-                        <div>
-                          <Label>Correct Answer</Label>
-                          <RadioGroup
-                            onValueChange={(value) => handleEditAIGeneratedQuestion(q.id, 'correctAnswer', value)}
-                            value={q.correctAnswer}
-                            className="flex flex-col space-y-1 mt-2"
-                          >
-                            {q.options.filter(opt => opt).map((option, optIndex) => (
-                              <div key={optIndex} className="flex items-center space-x-2">
-                                <RadioGroupItem value={option} id={`ai-q-correct-${q.id}-${optIndex}`} />
-                                <Label htmlFor={`ai-q-correct-${q.id}-${optIndex}`}>{option}</Label>
-                              </div>
-                            ))}
-                          </RadioGroup>
-                        </div>
-                        <div>
-                          <Label htmlFor={`ai-q-marks-${q.id}`}>Marks</Label>
-                          <Input
-                            id={`ai-q-marks-${q.id}`}
-                            type="number"
-                            min="1"
-                            value={q.marks}
-                            onChange={(e) => handleEditAIGeneratedQuestion(q.id, 'marks', parseInt(e.target.value) || 1)}
-                            className="mt-1"
-                          />
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-                <Button onClick={handleAddAIGeneratedQuestionsToPool} className="w-full mt-4 bg-blue-600 hover:bg-blue-700">Add to Question Pool</Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Quiz Creation */}
-        <Card className="shadow-lg col-span-full lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <ListChecks className="h-6 w-6" /> Create New Quiz
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="quizTitle">Quiz Title</Label>
-              <Input
-                id="quizTitle"
-                placeholder="e.g., 'Midterm Exam - Chapter 1'"
-                value={quizTitle}
-                onChange={(e) => setQuizTitle(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="quizTimeLimit">Time Limit (minutes)</Label>
-              <Input
-                id="quizTimeLimit"
-                type="number"
-                min="1"
-                value={quizTimeLimit}
-                onChange={(e) => setQuizTimeLimit(parseInt(e.target.value) || 1)}
-                className="mt-1"
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="negativeMarking">Enable Negative Marking</Label>
-              <Switch
-                id="negativeMarking"
-                checked={negativeMarking}
-                onCheckedChange={setNegativeMarking}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="competitionMode">Enable Competition Mode</Label>
-              <Switch
-                id="competitionMode"
-                checked={competitionMode}
-                onCheckedChange={setCompetitionMode}
-              />
-            </div>
-            <div>
-              <Label>Select Questions for Quiz ({selectedQuestionIds.length} selected)</Label>
-              <div className="mt-2 space-y-2 max-h-60 overflow-y-auto border p-3 rounded-md bg-gray-50">
-                {questions.length === 0 ? (
-                  <p className="text-gray-500">No questions available. Create some first!</p>
-                ) : (
-                  questions.map((q) => (
-                    <div key={q.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`question-${q.id}`}
-                        checked={selectedQuestionIds.includes(q.id)}
-                        onCheckedChange={() => handleToggleQuestionSelection(q.id)}
-                      />
-                      <Label htmlFor={`question-${q.id}`} className="text-sm font-normal">
-                        {q.questionText} ({q.marks} marks)
-                      </Label>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button onClick={handleAddQuiz} className="w-full bg-blue-600 hover:bg-blue-700">Create Quiz</Button>
-          </CardFooter>
-        </Card>
-
-        {/* Existing Quizzes */}
-        <Card className="shadow-lg col-span-full lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <Trophy className="h-6 w-6" /> Available Quizzes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {quizzes.length === 0 ? (
-              <p className="text-gray-500">No quizzes created yet.</p>
-            ) : (
-              <ul className="space-y-2">
-                {quizzes.map((quiz) => (
-                  <li key={quiz.id} className="flex justify-between items-center p-3 border rounded-md bg-white shadow-sm">
-                    <div>
-                      <span className="font-medium">{quiz.title} ({quiz.questionIds.length} questions)</span>
-                      <p className="text-sm text-gray-600 flex items-center gap-1">
-                        <Clock className="h-4 w-4 inline-block" /> {quiz.timeLimitMinutes} min
-                        {quiz.negativeMarking && <MinusCircle className="h-4 w-4 inline-block text-red-500 ml-2" />}
-                        {quiz.negativeMarking && <span className="text-red-500 text-xs">Negative Marking</span>}
-                        {quiz.competitionMode && <Users className="h-4 w-4 inline-block text-purple-600 ml-2" />}
-                        {quiz.competitionMode && <span className="text-purple-600 text-xs">Competition Mode</span>}
-                      </p>
-                    </div>
-                    <Link to={`/quiz/${quiz.id}`} className="text-sm text-blue-600 hover:underline">
-                      Preview Quiz
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+      <div className="flex flex-1">
+        {!isMobile && (
+          <ResizablePanelGroup direction="horizontal" className="min-h-screen max-w-full">
+            <ResizablePanel defaultSize={20} minSize={15} maxSize={25}>
+              <TeacherSidebar activeView={activeView} setActiveView={setActiveView} isMobile={isMobile} />
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={80}>
+              <main className="flex-1 p-8 overflow-auto">
+                <h1 className="text-4xl font-bold text-gray-800 mb-8 hidden lg:block">Teacher Dashboard</h1>
+                {renderContent()}
+              </main>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        )}
+        {isMobile && (
+          <main className="flex-1 p-4 overflow-auto">
+            {renderContent()}
+          </main>
+        )}
       </div>
     </div>
   );
