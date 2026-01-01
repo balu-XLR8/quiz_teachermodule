@@ -4,7 +4,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { PanelLeft, PlusCircle, Brain, ListChecks, Trophy } from 'lucide-react';
+import { PanelLeft, PlusCircle, ListChecks, Trophy } from 'lucide-react'; // Removed Brain icon
 import { cn } from '@/lib/utils';
 
 interface TeacherSidebarProps {
@@ -16,7 +16,7 @@ interface TeacherSidebarProps {
 const TeacherSidebar = ({ activeView, setActiveView, isMobile }: TeacherSidebarProps) => {
   const navItems = [
     { id: 'create-question', label: 'Create Question', icon: PlusCircle },
-    { id: 'ai-generator', label: 'AI Generator', icon: Brain },
+    // Removed AI Generator from here
     { id: 'create-quiz', label: 'Create Quiz', icon: ListChecks },
     { id: 'available-quizzes', label: 'Available Quizzes', icon: Trophy },
   ];

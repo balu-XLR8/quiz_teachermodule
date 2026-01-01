@@ -6,13 +6,12 @@ import { toast } from 'sonner';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import TeacherSidebar from '@/components/layout/TeacherSidebar';
 import QuestionCreator from '@/components/teacher/QuestionCreator';
-import AIQuestionGenerator from '@/components/teacher/AIQuestionGenerator';
 import QuizCreator from '@/components/teacher/QuizCreator';
 import AvailableQuizzesList from '@/components/teacher/AvailableQuizzesList';
 import { useIsMobile } from '@/hooks/use-mobile'; // Import the hook
 
 const TeacherDashboard = () => {
-  const { questions, quizzes, addQuestion, addQuiz, generateAIQuestions } = useQuiz();
+  const { questions, quizzes, addQuestion } = useQuiz();
   const isMobile = useIsMobile();
 
   // State for active view in sidebar
@@ -24,19 +23,7 @@ const TeacherDashboard = () => {
   const [correctAnswer, setCorrectAnswer] = useState('');
   const [questionMarks, setQuestionMarks] = useState<number>(1);
 
-  // AI Question Generation State
-  const [aiCoursePaperName, setAiCoursePaperName] = useState('');
-  const [aiDifficulty, setAiDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Easy');
-  const [aiNumQuestions, setAiNumQuestions] = useState<number>(3);
-  const [aiGeneratedQuestions, setAiGeneratedQuestions] = useState<Question[]>([]);
-
-  // Quiz Creation State (now mostly handled internally by QuizCreator)
-  // These states are no longer directly passed to QuizCreator, but kept here for other components if needed.
-  // const [quizTitle, setQuizTitle] = useState('');
-  // const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
-  // const [quizTimeLimit, setQuizTimeLimit] = useState<number>(30);
-  // const [negativeMarking, setNegativeMarking] = useState<boolean>(false);
-  // const [competitionMode, setCompetitionMode] = useState<boolean>(false);
+  // AI Question Generation State (removed from here, now handled in QuizCreator)
 
   const handleAddQuestion = () => {
     if (!questionText || options.some(opt => !opt) || !correctAnswer || questionMarks <= 0) {
@@ -62,47 +49,6 @@ const TeacherDashboard = () => {
     setQuestionMarks(1);
   };
 
-  // handleAddQuiz logic is now entirely within QuizCreator.tsx
-  // const handleAddQuiz = () => { ... };
-
-  // handleToggleQuestionSelection logic is no longer needed for QuizCreator
-  // const handleToggleQuestionSelection = (questionId: string) => { ... };
-
-  const handleGenerateAIQuestions = () => {
-    if (!aiCoursePaperName) {
-      toast.error("Please enter a course paper name for AI generation.");
-      return;
-    }
-    if (aiNumQuestions <= 0) {
-      toast.error("Please enter a valid number of questions to generate.");
-      return;
-    }
-    const generated = generateAIQuestions(aiCoursePaperName, aiDifficulty, aiNumQuestions);
-    setAiGeneratedQuestions(generated);
-  };
-
-  const handleAddAIGeneratedQuestionsToPool = () => {
-    if (aiGeneratedQuestions.length === 0) {
-      toast.error("No AI generated questions to add.");
-      return;
-    }
-    aiGeneratedQuestions.forEach(q => {
-      if (!q.questionText || q.options.some(opt => !opt) || !q.correctAnswer || q.marks <= 0 || !q.options.includes(q.correctAnswer)) {
-        toast.error(`Question "${q.questionText.substring(0, 30)}..." is incomplete or invalid and was not added.`);
-        return;
-      }
-      addQuestion({
-        quizId: q.quizId,
-        questionText: q.questionText,
-        options: q.options,
-        correctAnswer: q.correctAnswer,
-        marks: q.marks,
-      });
-    });
-    setAiGeneratedQuestions([]);
-    toast.success("Selected AI generated questions added to the question pool!");
-  };
-
   const renderContent = () => {
     switch (activeView) {
       case 'create-question':
@@ -119,39 +65,8 @@ const TeacherDashboard = () => {
             handleAddQuestion={handleAddQuestion}
           />
         );
-      case 'ai-generator':
-        return (
-          <AIQuestionGenerator
-            aiCoursePaperName={aiCoursePaperName}
-            setAiCoursePaperName={setAiCoursePaperName}
-            aiDifficulty={aiDifficulty}
-            setAiDifficulty={setAiDifficulty}
-            aiNumQuestions={aiNumQuestions}
-            setAiNumQuestions={setAiNumQuestions}
-            aiGeneratedQuestions={aiGeneratedQuestions}
-            setAiGeneratedQuestions={setAiGeneratedQuestions}
-            handleGenerateAIQuestions={handleGenerateAIQuestions}
-            handleAddAIGeneratedQuestionsToPool={handleAddAIGeneratedQuestionsToPool}
-          />
-        );
       case 'create-quiz':
-        return (
-          <QuizCreator
-            // Props for QuizCreator are now managed internally
-            // quizTitle={quizTitle}
-            // setQuizTitle={setQuizTitle}
-            // quizTimeLimit={quizTimeLimit}
-            // setQuizTimeLimit={setQuizTimeLimit}
-            // negativeMarking={negativeMarking}
-            // setNegativeMarking={setNegativeMarking}
-            // competitionMode={competitionMode}
-            // setCompetitionMode={setCompetitionMode}
-            // questions={questions} // No longer needed for QuizCreator
-            // selectedQuestionIds={selectedQuestionIds} // No longer needed for QuizCreator
-            // handleToggleQuestionSelection={handleToggleQuestionSelection} // No longer needed for QuizCreator
-            // handleAddQuiz={handleAddQuiz} // No longer needed for QuizCreator
-          />
-        );
+        return <QuizCreator />; // QuizCreator now handles its own state and AI generation
       case 'available-quizzes':
         return <AvailableQuizzesList quizzes={quizzes} />;
       default:

@@ -8,9 +8,11 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ListChecks, PlusCircle, Trash2, Eye, Save } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Import Select components
+import { ListChecks, PlusCircle, Trash2, Eye, Save, Brain } from 'lucide-react'; // Import Brain icon
 import { toast } from 'sonner';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useNavigate } from 'react-router-dom';
+import { useQuiz } from '@/context/QuizContext'; // Import useQuiz
 
 // Define a type for questions in local draft state
 interface LocalQuestion {
@@ -47,7 +49,8 @@ interface StoredQuiz {
 }
 
 const QuizCreator = () => {
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate();
+  const { generateAIQuestions } = useQuiz(); // Use the generateAIQuestions from context
 
   // Consolidated quiz data state
   const [quizData, setQuizData] = useState<LocalQuizData>({
@@ -63,6 +66,10 @@ const QuizCreator = () => {
   const [competitionMode, setCompetitionMode] = useState<boolean>(false);
 
   const [isQuizStructureInitialized, setIsQuizStructureInitialized] = useState<boolean>(false);
+
+  // AI Question Generation State (now local to QuizCreator)
+  const [aiCoursePaperName, setAiCoursePaperName] = useState('');
+  const [aiDifficulty, setAiDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Easy');
 
   // Calculate total marks dynamically
   const totalQuizMarks = quizData.questions.reduce((sum, q) => sum + q.marks, 0);
@@ -207,6 +214,34 @@ const QuizCreator = () => {
     });
   };
 
+  const handleGenerateAIQuestions = () => {
+    if (!aiCoursePaperName.trim()) {
+      toast.error("Please enter a course/paper name for AI generation.");
+      return;
+    }
+
+    const generatedQuestions = generateAIQuestions(
+      aiCoursePaperName,
+      aiDifficulty,
+      quizData.totalQuestions, // Use totalQuestions from quiz setup
+      quizData.optionsPerQuestion // Use optionsPerQuestion from quiz setup
+    );
+
+    // Map generated questions to LocalQuestion format
+    const newDraftQuestions: LocalQuestion[] = generatedQuestions.map(q => ({
+      questionText: q.questionText,
+      options: q.options,
+      correctAnswerIndex: q.options.indexOf(q.correctAnswer), // Find index of correct answer
+      marks: 1, // Default marks, as per requirement for manual input
+    }));
+
+    setQuizData((prev) => ({
+      ...prev,
+      questions: newDraftQuestions,
+    }));
+    toast.success("AI generated questions loaded into draft. Please review and set marks.");
+  };
+
   // Helper to prepare quiz data for storage/logging
   const prepareQuizForOutput = (isForPreview: boolean = false): StoredQuiz | null => {
     if (!validateQuizDraft()) {
@@ -291,6 +326,8 @@ const QuizCreator = () => {
     setNegativeMarking(false);
     setCompetitionMode(false);
     setIsQuizStructureInitialized(false);
+    setAiCoursePaperName('');
+    setAiDifficulty('Easy');
   };
 
   return (
@@ -377,9 +414,47 @@ const QuizCreator = () => {
               <span>Total Questions: {quizData.questions.length}</span>
               <span>Total Marks: {totalQuizMarks}</span>
             </div>
-            <div className="space-y-6 max-h-96 overflow-y-auto p-3 border rounded-md bg-gray-50">
+
+            {/* AI Question Generation Section */}
+            <div className="border-t pt-4 mt-4 space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Brain className="h-5 w-5" /> Generate Questions with AI (Mock)
+              </h3>
+              <div>
+                <Label htmlFor="aiCoursePaperName">Course / Paper Name</Label>
+                <Input
+                  id="aiCoursePaperName"
+                  placeholder="e.g., 'Introduction to Quantum Physics'"
+                  value={aiCoursePaperName}
+                  onChange={(e) => setAiCoursePaperName(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="aiDifficulty">Difficulty</Label>
+                <Select onValueChange={(value: 'Easy' | 'Medium' | 'Hard') => setAiDifficulty(value)} value={aiDifficulty}>
+                  <SelectTrigger className="w-full mt-1">
+                    <SelectValue placeholder="Select difficulty" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Easy">Easy</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                    <SelectItem value="Hard">Hard</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={handleGenerateAIQuestions} className="w-full bg-purple-600 hover:bg-purple-700">
+                Generate Questions with AI
+              </Button>
+              <p className="text-sm text-gray-500 mt-2">
+                AI will generate {quizData.totalQuestions} questions with {quizData.optionsPerQuestion} options each.
+                You will still need to manually set marks for each question.
+              </p>
+            </div>
+
+            <div className="space-y-6 max-h-96 overflow-y-auto p-3 border rounded-md bg-gray-50 mt-4">
               {quizData.questions.length === 0 ? (
-                <p className="text-gray-500 text-center">No questions added yet. Click "Add Question" below.</p>
+                <p className="text-gray-500 text-center">No questions added yet. Click "Add Another Question" or "Generate Questions with AI".</p>
               ) : (
                 quizData.questions.map((q, index) => (
                   <Card key={index} className="p-4 border rounded-md bg-white shadow-sm relative">

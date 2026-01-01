@@ -42,7 +42,7 @@ interface QuizContextType {
   submitQuizAttempt: (attempt: Omit<QuizAttempt, 'id' | 'timestamp'>) => void;
   getQuestionsForQuiz: (quizId: string) => Question[];
   getQuizById: (quizId: string) => Quiz | undefined;
-  generateAIQuestions: (coursePaperName: string, difficulty: 'Easy' | 'Medium' | 'Hard', numQuestions: number) => Question[];
+  generateAIQuestions: (coursePaperName: string, difficulty: 'Easy' | 'Medium' | 'Hard', numQuestions: number, numOptions: number) => Question[];
 }
 
 const QuizContext = createContext<QuizContextType | undefined>(undefined);
@@ -116,9 +116,9 @@ export const QuizProvider = ({ children }: QuizProviderProps) => {
   };
 
   // Mock AI Question Generation
-  const generateAIQuestions = (coursePaperName: string, difficulty: 'Easy' | 'Medium' | 'Hard', numQuestions: number): Question[] => {
+  const generateAIQuestions = (coursePaperName: string, difficulty: 'Easy' | 'Medium' | 'Hard', numQuestions: number, numOptions: number): Question[] => {
     const generated: Question[] = [];
-    const baseMarks = difficulty === 'Easy' ? 1 : (difficulty === 'Medium' ? 2 : 3);
+    const baseMarks = 1; // User wants manual input, so default to 1
 
     for (let i = 0; i < numQuestions; i++) {
       const questionId = `ai-q-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 4)}`;
@@ -126,32 +126,54 @@ export const QuizProvider = ({ children }: QuizProviderProps) => {
       let options: string[] = [];
       let correctAnswer = '';
 
+      // Generate base options, then pad/truncate to numOptions
+      let baseOptions: string[] = [];
       switch (difficulty) {
         case 'Easy':
           questionText = `What is the capital of ${coursePaperName.split(' ')[0] || 'France'}?`;
-          options = ['Paris', 'London', 'Berlin', 'Rome'];
+          baseOptions = ['Paris', 'London', 'Berlin', 'Rome', 'Madrid', 'Tokyo']; // More options to pick from
           correctAnswer = 'Paris';
           break;
         case 'Medium':
           questionText = `In ${coursePaperName}, which concept describes the interaction between supply and demand?`;
-          options = ['Equilibrium', 'Elasticity', 'Utility', 'Scarcity'];
+          baseOptions = ['Equilibrium', 'Elasticity', 'Utility', 'Scarcity', 'Inflation', 'Deflation'];
           correctAnswer = 'Equilibrium';
           break;
         case 'Hard':
           questionText = `Explain the implications of Heisenberg's Uncertainty Principle in the context of ${coursePaperName}.`;
-          options = [
+          baseOptions = [
             'It states that one cannot simultaneously know the exact position and momentum of a particle.',
             'It describes the behavior of particles at relativistic speeds.',
             'It quantifies the energy levels of electrons in an atom.',
-            'It relates to the wave-particle duality of light.'
+            'It relates to the wave-particle duality of light.',
+            'It is a fundamental principle of classical mechanics.',
+            'It applies only to macroscopic objects.'
           ];
           correctAnswer = 'It states that one cannot simultaneously know the exact position and momentum of a particle.';
           break;
         default:
           questionText = `[${difficulty}] According to "${coursePaperName}", what is the key concept related to topic ${i + 1}?`;
-          options = [`Option A for ${i + 1}`, `Option B for ${i + 1}`, `Option C for ${i + 1}`, `Option D for ${i + 1}`];
+          baseOptions = [`Option A for ${i + 1}`, `Option B for ${i + 1}`, `Option C for ${i + 1}`, `Option D for ${i + 1}`, `Option E for ${i + 1}`, `Option F for ${i + 1}`];
           correctAnswer = `Option A for ${i + 1}`;
       }
+
+      // Ensure correct answer is always included and options count matches numOptions
+      const shuffledBaseOptions = baseOptions.filter(opt => opt !== correctAnswer);
+      // Take numOptions - 1 random options from shuffledBaseOptions, then add correctAnswer
+      const finalOptions = [correctAnswer, ...shuffledBaseOptions.sort(() => 0.5 - Math.random()).slice(0, numOptions - 1)].sort(() => 0.5 - Math.random());
+
+      // If for some reason finalOptions is still less than numOptions (e.g., not enough unique base options), pad with generic ones
+      while (finalOptions.length < numOptions) {
+        finalOptions.push(`Generic Option ${finalOptions.length + 1}`);
+      }
+      // If finalOptions is more than numOptions, truncate
+      options = finalOptions.slice(0, numOptions);
+
+      // Ensure correctAnswer is still in the final options, if not, pick the first one
+      if (!options.includes(correctAnswer)) {
+          correctAnswer = options[0];
+      }
+
 
       generated.push({
         id: questionId,
@@ -159,7 +181,7 @@ export const QuizProvider = ({ children }: QuizProviderProps) => {
         questionText: questionText.replace(coursePaperName.split(' ')[0] || 'France', coursePaperName),
         options,
         correctAnswer,
-        marks: baseMarks,
+        marks: baseMarks, // Default marks, user will set manually
       });
     }
     toast.info(`Mock AI generated ${numQuestions} questions for "${coursePaperName}" (${difficulty}).`);
