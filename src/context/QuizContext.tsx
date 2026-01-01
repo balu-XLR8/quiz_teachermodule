@@ -11,6 +11,7 @@ export interface Question {
   options: string[];
   correctAnswer: string;
   marks: number; // New field for question marks
+  timeLimitMinutes: number; // New field for individual question time limit
 }
 
 export interface Quiz {
@@ -119,6 +120,7 @@ export const QuizProvider = ({ children }: QuizProviderProps) => {
   const generateAIQuestions = (coursePaperName: string, difficulty: 'Easy' | 'Medium' | 'Hard', numQuestions: number, numOptions: number): Question[] => {
     const generated: Question[] = [];
     const baseMarks = 1; // User wants manual input, so default to 1
+    const baseTimeLimit = 1; // Default time limit for AI generated questions
 
     for (let i = 0; i < numQuestions; i++) {
       const questionId = `ai-q-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 4)}`;
@@ -182,6 +184,7 @@ export const QuizProvider = ({ children }: QuizProviderProps) => {
         options,
         correctAnswer,
         marks: baseMarks, // Default marks, user will set manually
+        timeLimitMinutes: baseTimeLimit, // Default time limit for AI generated questions
       });
     }
     toast.info(`Mock AI generated ${numQuestions} questions for "${coursePaperName}" (${difficulty}).`);
