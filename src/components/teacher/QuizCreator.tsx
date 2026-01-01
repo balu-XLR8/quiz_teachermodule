@@ -41,6 +41,9 @@ const QuizCreator = ({}: QuizCreatorProps) => {
   // Draft Questions State (questions being created for this quiz)
   const [quizQuestionsDraft, setQuizQuestionsDraft] = useState<DraftQuestion[]>([]);
 
+  // Calculate total marks dynamically
+  const totalQuizMarks = quizQuestionsDraft.reduce((sum, q) => sum + q.marks, 0);
+
   const handleInitializeQuizStructure = () => {
     if (totalQuestionsToGenerate <= 0) {
       toast.error("Total questions must be at least 1.");
@@ -249,6 +252,10 @@ const QuizCreator = ({}: QuizCreatorProps) => {
         ) : (
           <>
             <h3 className="text-lg font-semibold mb-2">Questions for "{quizTitle || 'New Quiz'}"</h3>
+            <div className="flex justify-between items-center mb-4 p-3 border rounded-md bg-blue-50 text-blue-800 font-semibold">
+              <span>Total Questions: {quizQuestionsDraft.length}</span>
+              <span>Total Marks: {totalQuizMarks}</span>
+            </div>
             <div className="space-y-6 max-h-96 overflow-y-auto p-3 border rounded-md bg-gray-50">
               {quizQuestionsDraft.length === 0 ? (
                 <p className="text-gray-500 text-center">No questions added yet. Click "Add Question" below.</p>
