@@ -23,20 +23,49 @@ const QuestionCreator = () => {
   const { addQuestion } = useQuiz();
 
   const [numQuestionsToCreate, setNumQuestionsToCreate] = useState<number>(1);
+  const [optionsPerQuestion, setOptionsPerQuestion] = useState<number>(4); // New state for options per question
   const [draftQuestions, setDraftQuestions] = useState<DraftQuestion[]>(() => [
-    { questionText: '', options: ['', '', '', ''], correctAnswer: '', marks: 1 },
+    { questionText: '', options: Array(4).fill(''), correctAnswer: '', marks: 1 },
   ]);
 
-  // Adjust draftQuestions array length when numQuestionsToCreate changes
+  // Adjust draftQuestions array length and options count when numQuestionsToCreate or optionsPerQuestion changes
   useEffect(() => {
     setDraftQuestions((prevQuestions) => {
       const newQuestions = [...prevQuestions];
+
+      // Adjust number of questions
       while (newQuestions.length < numQuestionsToCreate) {
-        newQuestions.push({ questionText: '', options: ['', '', '', ''], correctAnswer: '', marks: 1 });
+        newQuestions.push({
+          questionText: '',
+          options: Array(optionsPerQuestion).fill(''), // Use optionsPerQuestion for new questions
+          correctAnswer: '',
+          marks: 1,
+        });
       }
-      return newQuestions.slice(0, numQuestionsToCreate);
+      const slicedQuestions = newQuestions.slice(0, numQuestionsToCreate);
+
+      // Adjust options count for all questions
+      return slicedQuestions.map(q => {
+        const newOptions = [...q.options];
+        while (newOptions.length < optionsPerQuestion) {
+          newOptions.push('');
+        }
+        const adjustedOptions = newOptions.slice(0, optionsPerQuestion);
+
+        // If the correct answer is no longer in the options, reset it
+        let newCorrectAnswer = q.correctAnswer;
+        if (newCorrectAnswer && !adjustedOptions.includes(newCorrectAnswer)) {
+          newCorrectAnswer = '';
+        }
+
+        return {
+          ...q,
+          options: adjustedOptions,
+          correctAnswer: newCorrectAnswer,
+        };
+      });
     });
-  }, [numQuestionsToCreate]);
+  }, [numQuestionsToCreate, optionsPerQuestion]); // Depend on both counts
 
   const handleUpdateQuestion = (index: number, field: keyof DraftQuestion, value: any) => {
     setDraftQuestions((prevQuestions) => {
@@ -85,8 +114,9 @@ const QuestionCreator = () => {
     toast.success(`${draftQuestions.length} question(s) added to the pool!`);
     // Reset form
     setNumQuestionsToCreate(1);
+    setOptionsPerQuestion(4); // Reset options per question
     setDraftQuestions([
-      { questionText: '', options: ['', '', '', ''], correctAnswer: '', marks: 1 },
+      { questionText: '', options: Array(4).fill(''), correctAnswer: '', marks: 1 },
     ]);
   };
 
@@ -115,6 +145,18 @@ const QuestionCreator = () => {
             min="1"
             value={numQuestionsToCreate}
             onChange={(e) => setNumQuestionsToCreate(parseInt(e.target.value) || 1)}
+            className="mt-1"
+          />
+        </div>
+        <div className="mt-3">
+          <Label htmlFor="optionsPerQuestion">Number of MCQ Options per Question</Label>
+          <Input
+            id="optionsPerQuestion"
+            type="number"
+            min="2"
+            max="6"
+            value={optionsPerQuestion}
+            onChange={(e) => setOptionsPerQuestion(parseInt(e.target.value) || 2)}
             className="mt-1"
           />
         </div>
