@@ -1,36 +1,35 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useQuiz, Question } from '@/context/QuizContext';
-import { toast } from 'sonner';
+import { useQuiz } from '@/context/QuizContext';
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
 import TeacherSidebar from '@/components/layout/TeacherSidebar';
 import QuestionCreator from '@/components/teacher/QuestionCreator';
 import QuizCreator from '@/components/teacher/QuizCreator';
 import AvailableQuizzesList from '@/components/teacher/AvailableQuizzesList';
-import { useIsMobile } from '@/hooks/use-mobile'; // Import the hook
+import { useIsMobile } from '@/hooks/use-mobile';
+import { cn } from '@/lib/utils'; // Import cn for conditional classes
 
 const TeacherDashboard = () => {
-  const { quizzes } = useQuiz(); // Removed 'questions' and 'addQuestion' as QuestionCreator manages its own state now
+  const { quizzes } = useQuiz();
   const isMobile = useIsMobile();
 
   // State for active view in sidebar
   const [activeView, setActiveView] = useState<string>('create-question');
 
-  // Removed Question Creation State as it's now managed internally by QuestionCreator
-
-  const renderContent = () => {
-    switch (activeView) {
-      case 'create-question':
-        return <QuestionCreator />; // Render QuestionCreator without props
-      case 'create-quiz':
-        return <QuizCreator />;
-      case 'available-quizzes':
-        return <AvailableQuizzesList quizzes={quizzes} />;
-      default:
-        return <QuestionCreator />;
-    }
-  };
+  const renderMainContent = () => (
+    <>
+      <div className={cn(activeView === 'create-question' ? 'block' : 'hidden')}>
+        <QuestionCreator />
+      </div>
+      <div className={cn(activeView === 'create-quiz' ? 'block' : 'hidden')}>
+        <QuizCreator />
+      </div>
+      <div className={cn(activeView === 'available-quizzes' ? 'block' : 'hidden')}>
+        <AvailableQuizzesList quizzes={quizzes} />
+      </div>
+    </>
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -49,14 +48,14 @@ const TeacherDashboard = () => {
             <ResizablePanel defaultSize={80}>
               <main className="flex-1 p-8 overflow-auto">
                 <h1 className="text-4xl font-bold text-gray-800 mb-8 hidden lg:block">Teacher Dashboard</h1>
-                {renderContent()}
+                {renderMainContent()}
               </main>
             </ResizablePanel>
           </ResizablePanelGroup>
         )}
         {isMobile && (
           <main className="flex-1 p-4 overflow-auto">
-            {renderContent()}
+            {renderMainContent()}
           </main>
         )}
       </div>
