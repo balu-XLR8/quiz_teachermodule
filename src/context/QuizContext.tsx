@@ -20,6 +20,7 @@ export interface Quiz {
   questionIds: string[]; // IDs of questions belonging to this quiz
   timeLimitMinutes: number; // New field for quiz time limit
   negativeMarking: boolean; // New field for negative marking
+  negativeMarks?: string | number; // Added negative marks field
   competitionMode: boolean; // New field for competition mode
 }
 
@@ -174,7 +175,7 @@ export const QuizProvider = ({ children }: QuizProviderProps) => {
 
       // Ensure correctAnswer is still in the final options, if not, pick the first one
       if (!options.includes(correctAnswer)) {
-          correctAnswer = options[0];
+        correctAnswer = options[0];
       }
 
 
